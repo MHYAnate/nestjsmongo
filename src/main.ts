@@ -60,7 +60,7 @@ export default async function handler(req: any, res: any) {
 // For local development
 if (process.env.NODE_ENV !== 'production') {
   bootstrapServer().then(async (app) => {
-    const port = process.env.PORT || 3001;
+    const port = process.env.PORT || 4000;
     await app.listen(port);
     console.log(`🚀 Application is running on: http://localhost:${port}/api/v1`);
   });
