@@ -23,4 +23,9 @@ export class AuthController {
   getMe(@Request() req) {
     return req.user;
   }
+
+  @Get('health')
+  health() {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
 }

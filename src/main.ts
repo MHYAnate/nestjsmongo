@@ -1,67 +1,49 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
-// Export for Vercel serverless function
-let cachedServer: any;
+let cachedApp: any;
 
-async function bootstrapServer() {
+async function createApp() {
   const app = await NestFactory.create(AppModule);
+  
+  // CORS - Allow all origins for now
   app.enableCors({
     origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: '*',
+    allowedHeaders: 'Content-Type, Accept, Authorization',
     credentials: true,
   });
-  const configService = app.get(ConfigService);
   
-  // Global prefix
-  const apiPrefix = configService.get<string>('API_PREFIX') || 'api/v1';
-  app.setGlobalPrefix(apiPrefix);
+  // Global prefix - matches frontend calls to /api/*
+  app.setGlobalPrefix('api/v1');
   
-  // CORS
-
-  
-  // Global pipes
+  // Validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
     }),
   );
-  
-  // Global filters
-  app.useGlobalFilters(new HttpExceptionFilter());
-  
-  // Global interceptors
-  app.useGlobalInterceptors(new TransformInterceptor());
   
   await app.init();
   return app;
 }
 
-// Vercel serverless handler
+// Vercel Serverless Handler
 export default async function handler(req: any, res: any) {
-  if (!cachedServer) {
-    cachedServer = await bootstrapServer();
+  if (!cachedApp) {
+    cachedApp = await createApp();
   }
   
-  const app = cachedServer.getHttpAdapter().getInstance();
-  return app(req, res);
+  const instance = cachedApp.getHttpAdapter().getInstance();
+  return instance(req, res);
 }
 
-// For local development
+// Local Development
 if (process.env.NODE_ENV !== 'production') {
-  bootstrapServer().then(async (app) => {
-    const port = process.env.PORT || 4000;
-    await app.listen(port);
-    console.log(`🚀 Application is running on: http://localhost:${port}/api/v1`);
+  createApp().then(async (app) => {
+    await app.listen(4000);
+    console.log('🚀 Server running on http://localhost:4000/api/v1');
   });
 }

@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -21,8 +23,13 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.create(dto.name, dto.email, hashedPassword);
 
+    const token = this.jwtService.sign(
+      { sub: user._id.toString(), email: user.email },
+      { secret: this.configService.get<string>('JWT_SECRET') }
+    );
+
     return {
-      access_token: this.jwtService.sign({ sub: user._id, email: user.email }),
+      access_token: token,
       user: { id: user._id, name: user.name, email: user.email },
     };
   }
@@ -38,8 +45,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const token = this.jwtService.sign(
+      { sub: user._id.toString(), email: user.email },
+      { secret: this.configService.get<string>('JWT_SECRET') }
+    );
+
     return {
-      access_token: this.jwtService.sign({ sub: user._id, email: user.email }),
+      access_token: token,
       user: { id: user._id, name: user.name, email: user.email },
     };
   }
